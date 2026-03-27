@@ -10,8 +10,6 @@ ADMIN_IDS = [6776237234, 7361497094 ]    #Telegram user ID
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
 DATA_FILE = "kinolar.json"
-
-# Adminning hozirgi yuklash holatini saqlash uchun
 admin_states = {}
 
 
@@ -21,10 +19,11 @@ admin_states = {}
 def load_movies():
     if not os.path.exists(DATA_FILE):
         return {}
+
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except:
         return {}
 
 
@@ -55,9 +54,9 @@ def is_admin(user_id):
 
 def get_next_code():
     if not kinolar:
-        return "1001"
+        return "100"
 
-    max_code = 1000
+    max_code = 99
     for code in kinolar.keys():
         if str(code).isdigit():
             max_code = max(max_code, int(code))
@@ -79,6 +78,7 @@ def get_new_movies_text():
     for code, info in sorted_movies:
         text += f"🎬 {info.get('nom', 'Noma’lum')}\n"
         text += f"🔢 Kod: {code}\n\n"
+
     return text
 
 
@@ -109,16 +109,18 @@ def get_top_movies_text():
 @bot.message_handler(commands=["start"])
 def start_handler(message):
     first_name = message.from_user.first_name or "foydalanuvchi"
+
     text = (
         f"👋 Assalomu alaykum, <b>{first_name}</b>!\n\n"
         f"🎬 Botimizga xush kelibsiz.\n"
         f"📩 Kino kodini yuboring."
     )
+
     bot.send_message(message.chat.id, text, reply_markup=main_menu())
 
 
 # =========================
-# Admin ID ko'rish
+# Admin ID ko‘rish
 # =========================
 @bot.message_handler(commands=["id"])
 def id_handler(message):
@@ -126,7 +128,7 @@ def id_handler(message):
 
 
 # =========================
-# Admin yangi kino qo'shish
+# Admin yangi kino qo‘shish
 # =========================
 @bot.message_handler(commands=["addkino"])
 def add_movie_handler(message):
@@ -146,6 +148,28 @@ def add_movie_handler(message):
     )
 
 
+# =========================
+# Admin kino o‘chirish
+# =========================
+@bot.message_handler(commands=["deletekino"])
+def delete_movie_handler(message):
+    if not is_admin(message.from_user.id):
+        bot.reply_to(message, "❌ Siz admin emassiz.")
+        return
+
+    admin_states[message.from_user.id] = {
+        "step": "waiting_delete_code"
+    }
+
+    bot.reply_to(
+        message,
+        "🗑 O‘chirmoqchi bo‘lgan kino kodini yuboring.\n\nBekor qilish uchun: /cancel"
+    )
+
+
+# =========================
+# Cancel
+# =========================
 @bot.message_handler(commands=["cancel"])
 def cancel_handler(message):
     if message.from_user.id in admin_states:
@@ -156,20 +180,18 @@ def cancel_handler(message):
 
 
 # =========================
-# Admin video yuborsa
+# Video qabul qilish
 # =========================
 @bot.message_handler(content_types=["video"])
 def video_handler(message):
     user_id = message.from_user.id
 
-    # 1) Agar admin oddiy video yuborsa -> file_id ko'rsatadi
     if is_admin(user_id):
         bot.reply_to(
             message,
             f"🎬 VIDEO FILE_ID:\n\n<code>{message.video.file_id}</code>"
         )
 
-    # 2) Agar admin addkino jarayonida bo'lsa -> saqlash jarayonini davom ettiradi
     if user_id in admin_states and admin_states[user_id].get("step") == "waiting_file":
         admin_states[user_id]["file_id"] = message.video.file_id
         admin_states[user_id]["file_type"] = "video"
@@ -183,7 +205,7 @@ def video_handler(message):
 
 
 # =========================
-# Admin document yuborsa
+# Document qabul qilish
 # =========================
 @bot.message_handler(content_types=["document"])
 def document_handler(message):
@@ -216,7 +238,7 @@ def text_handler(message):
     text = message.text.strip()
 
     # =========================
-    # Admin qo'shish jarayoni
+    # Admin step lar
     # =========================
     if user_id in admin_states:
         step = admin_states[user_id].get("step")
@@ -242,7 +264,6 @@ def text_handler(message):
 
         elif step == "waiting_year":
             movie_data = admin_states[user_id]
-
             code = get_next_code()
 
             kinolar[code] = {
@@ -268,6 +289,24 @@ def text_handler(message):
             )
             return
 
+        elif step == "waiting_delete_code":
+            if text in kinolar:
+                deleted_name = kinolar[text].get("nom", "Noma’lum")
+                del kinolar[text]
+                save_movies(kinolar)
+                del admin_states[user_id]
+
+                bot.reply_to(
+                    message,
+                    f"✅ Kino o‘chirildi.\n\n🎬 Nomi: {deleted_name}\n🔢 Kodi: {text}"
+                )
+            else:
+                bot.reply_to(
+                    message,
+                    "❌ Bunday kodli kino topilmadi.\nQayta urinib ko‘ring yoki /cancel bosing."
+                )
+            return
+
     # =========================
     # Menyu tugmalari
     # =========================
@@ -284,7 +323,7 @@ def text_handler(message):
         return
 
     # =========================
-    # Kino kodi bilan qidirish
+    # Kino kod bilan qidirish
     # =========================
     if text in kinolar:
         kino = kinolar[text]
