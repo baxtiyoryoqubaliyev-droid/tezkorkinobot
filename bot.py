@@ -6,7 +6,7 @@ from flask import Flask
 
 TOKEN = "8257995780:AAHzzCV5BFFBhDQ6pzov5D5xBiuYgwwrwkM"
 ADMIN_ID = 6776237234  #Telegram user ID
-ADMIN_ID = 7361497094
+ADMIN_ID = 7361497094  #admin user ID
 
 bot = telebot.TeleBot(TOKEN)
 
