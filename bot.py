@@ -5,13 +5,14 @@ import os
 from flask import Flask
 
 TOKEN = "8257995780:AAHzzCV5BFFBhDQ6pzov5D5xBiuYgwwrwkM"
-ADMIN_ID = 6776237234  #Telegram user ID
-ADMIN_ID = 7361497094  #admin user ID
+ADMIN_IDS = [6776237234, 7361497094 ]    #Telegram user ID
+
 
 bot = telebot.TeleBot(TOKEN)
 
 #RENDER UCHUN FLASK PORT
 app = Flask(__name__)
+
 
 @app.route("/")
 def home():
@@ -61,19 +62,31 @@ def start(message):
     )
 
 # ====== ADMIN VIDEO YUBORSA FILE_ID CHIQARISH ======
-@bot.message_handler(content_types=['video', 'document'])
-def get_file_id(message):
-    if message.from_user.id == ADMIN_ID:
+@bot.message_handler(content_types=['video'])
+def get_video_file_id(message):
 
-        if message.video:
-            fid = message.video.file_id
-        else:
-            fid = message.document.file_id
+    print("VIDEO KELDI")  # debug
 
+    if message.from_user.id in ADMIN_IDS:
         bot.reply_to(
             message,
-            f"📁 FILE_ID:\n\n{fid}\n\n"
-            f"Yangi kino qo‘shish uchun bazaga shu ID ni yozing."
+            f"🎬 VIDEO FILE_ID:\n\n{message.video.file_id}"
+        )
+    else:
+        print("Admin emas")
+
+
+# ===== DOCUMENT FILE_ID =====
+@bot.message_handler(content_types=['document'])
+def get_document_file_id(message):
+
+    print("DOCUMENT KELDI")  # debug
+
+    if message.from_user.id in ADMIN_IDS:
+        bot.reply_to(
+            message,
+            f"📁 DOCUMENT FILE_ID:\n\n{message.document.file_id}"
+        )
         )
 
 # ====== YANGI KINOLAR ======
